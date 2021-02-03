@@ -1,1 +1,8 @@
 /* Insert your global CSS here. */
+body {
+    font-family: sans-serif;
+}
+.horiz-flex-center {
+    display: flex;
+    align-items: center;
+}

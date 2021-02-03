@@ -18,50 +18,107 @@ const weatherData = [ // Temperatures are in F; sorry metric system users.
     }
 ];
 
-var color = d3.scaleOrdinal(d3.schemeCategory10);
-
-window.addEventListener("load", drawCircles);
-
-const padding = {top:20, left:20, right:20, bottom:20};
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const xForMonth = d3.scaleBand()
-        .domain(MONTHS)
-        .range([padding.left, 500 - padding.right]) // TODO
-        .padding(0); 
+window.addEventListener("load", populateDropdown);
+window.addEventListener("load", drawBarChart);
 /*
  * Why this line? Because if this script runs before the svg exists, then nothing will happen, and d3 won't even
  * complain.  This delays drawing until the entire DOM has loaded.
  */
+var city_ind = 0;
 
-function drawCircles() {
+function drawBarChart() {
     // d3 has been added to the html in a <script> tag so referencing it here should work.
     const svg = d3.select("svg");
 
     const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    const padding = {top:20, left:20, right:20, bottom:20};
+    const padding = {top:10, left:40, right:0, bottom:30};
 
     const xForMonth = d3.scaleBand()
         .domain(MONTHS)
         .range([padding.left, svg.attr("width") - padding.right]) // TODO
-        .padding(0); 
+        .padding(.2); 
     
     const allTemps = weatherData.map(city => city.averageHighByMonth).flat();
 
+    const domain_margin = 5
+
+    const temp0 = d3.min(allTemps) - domain_margin
+    const tempMax = d3.max(allTemps) + domain_margin
+
     const yForTemp = d3.scaleLinear()
-        .domain(Math.min(...allTemps), Math.max(...allTemps))
+        .domain([temp0, tempMax])
         .range([svg.attr("height") - padding.bottom, padding.top]); 
 
-    //console.log(allTemps);
-    const margin = .1;
+    const heightForTemp = d3.scaleLinear()
+        .domain([tempMax, temp0])
+        .range([svg.attr("height") - padding.bottom - padding.top, 0]); 
+
 
 
     svg.selectAll("rect")
-    .data(weatherData[0].averageHighByMonth) // (Hardcoded) only Urbana’s data
+    .data(weatherData[city_ind].averageHighByMonth) // (Hardcoded) only Urbana’s data
     .join("rect")
         .attr("x", (dataPoint, i) => xForMonth(MONTHS[i])) // i is dataPoint’s index in the data array
         .attr("y", (dataPoint, i) => yForTemp(dataPoint))
-        .attr("width", (dataPoint, i) => 10)
-        .attr("height", (dataPoint, i) => 10)
+        .attr("width", (dataPoint, i) => xForMonth.bandwidth())
+        .attr("height", (dataPoint, i) => heightForTemp(dataPoint))
         .attr("fill", "steelblue");
+
+
+    svg.selectAll("g").remove()
+    svg.selectAll("text").remove()
+    const yTranslation = svg.attr("height") - padding.bottom
+    const xTranslation = padding.left
+    const xAxis = svg.append("g")
+        .call(d3.axisBottom(xForMonth)) // d3 creates a bunch of elements inside the <g>
+        .attr("transform", `translate(0, ${yTranslation})`); // TODO yTranslation
+        
+    const yAxis = svg.append("g")
+        .call(d3.axisLeft(yForTemp))
+        .attr("transform", `translate(${xTranslation}, 0)`); // TODO xTranslation
+    /*
+    svg.append("text")
+        .attr("font-size", 12)
+        .attr("font-weight", "bold")
+        .attr("font-family", "sans-serif")
+        .attr("x", svg.attr("width")/2)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "Auto")
+        .attr("y", svg.attr("height"))
+        .text("Month");
+    */
+   
+    svg.append("text")
+        .attr("font-size", 12)
+        .attr("font-weight", "bold") // should be moved to CSS. For now, the code is this
+        .attr("font-family", "sans-serif") // way to simplify our directions to you.
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "Hanging")
+        .attr("transform", `translate(${0} ${svg.attr("height")/2}) rotate(-90)`)
+        .text("Temperature (F)");
 }
+
+function populateDropdown() {
+    const select = d3.select("select");
+
+    select.append("option")
+        .text("Urbana");
+    
+    select.append("option")
+        .text("London");
+
+    select.append("option")
+        .text("Cape Town");
+
+    // TODO create <option>s as children of the <select>, one for each city
+ 
+    select.on("change", changeEvent => {
+        // Runs when the dropdown is changed
+        console.log(changeEvent.target.selectedIndex);
+        city_ind = changeEvent.target.selectedIndex;
+        drawBarChart();
+        // The newly selected index
+    });
+}
+
